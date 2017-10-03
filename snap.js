@@ -1,9 +1,10 @@
 
 class Article {
-    constructor(author, date, content) {
+    constructor(author, date, content, reaction) {
         this.author = author
         this.date = date
         this.content = content
+        this.reaction = reaction
         this.reply = []
     }
     addReply(article) {
@@ -37,11 +38,10 @@ function extractPost(parent) {
     var date = abbrToDate(dateNode)
 
     var content = findPostContent(parent)
+    var reaction = extractPostReaction(parent)
 
-    return new Article(author, date, content)
+    return new Article(author, date, content, reaction)
 }
-
-// var article = extractPost($('div'))
 
 function findPostContent(parent) {
     var contentNode =
@@ -119,12 +119,44 @@ function seeMore(node) {
     })
 }
 
+function extractCommentReaction(parent) {
+    let reaction
+}
+
+function extractPostReaction(parent) {
+    let reactionNode = parent.querySelector('UFILikeSentence a')
+    return reactionNode
+        .map((a) => a.querySelector('span:last-child'))
+        .map((span) => span.textContent)
+        .map(Number)
+}
 
 function backupPost(node) {
     return Promise.all([
         seeMore(node),
         expandComment(node)
-    ]).then(() => {
-        window.post = extractPost(node)
+    ]).then(() => extractPost(node))
+}
+
+// GM_registerMenuCommand('backup post', getPostByClick, 'b')
+function getPostByClick() {
+    function findPost(node) {
+        if (node.classList.contains('fbUserStory')) return node
+        else {
+            let parent = node.parentNode
+            if (parent) return findPost(parent)
+            else return null
+        }
+    }
+    document.addEventListener('click', function (clickEvent) {
+        clickEvent.preventDefault()
+        let postNode = findPost(clickEvent.target)
+        backupPost(postNode).then((article) => {
+            window.article = article
+            // GM_setClipboard(JSON.stringify(article))
+            alert(JSON.stringify(article))
+        })
+    }, {
+        once: true
     })
 }
