@@ -1,3 +1,11 @@
+// ==UserScript==
+// @name        f-bakery-up
+// @namespace   http://github.com/GHolk/
+// @include     https://www.facebook.com/*
+// @version     1.1
+// @grant       GM_setClipboard
+// @grant       GM_registerMenuCommand
+// ==/UserScript==
 
 class Article {
     constructor(author, date, content, reaction) {
@@ -45,7 +53,7 @@ function extractPost(parent) {
 
 function findPostContent(parent) {
     var contentNode =
-        parent.querySelector('.userContent div > span:first-child')
+        parent.querySelector('.userContent')
     return contentNode.textContent
 }
 
@@ -124,8 +132,8 @@ function extractCommentReaction(parent) {
 }
 
 function extractPostReaction(parent) {
-    let reactionNode = parent.querySelector('UFILikeSentence a')
-    return reactionNode
+    let reactionNode = parent.querySelectorAll('.UFILikeSentence a')
+    return Array.from(reactionNode)
         .map((a) => a.querySelector('span:last-child'))
         .map((span) => span.textContent)
         .map(Number)
@@ -138,7 +146,7 @@ function backupPost(node) {
     ]).then(() => extractPost(node))
 }
 
-// GM_registerMenuCommand('backup post', getPostByClick, 'b')
+GM_registerMenuCommand('backup post', getPostByClick, 'b')
 function getPostByClick() {
     function findPost(node) {
         if (node.classList.contains('fbUserStory')) return node
@@ -153,9 +161,8 @@ function getPostByClick() {
         let postNode = findPost(clickEvent.target)
         backupPost(postNode).then((article) => {
             window.article = article
-            // GM_setClipboard(JSON.stringify(article))
-            alert(JSON.stringify(article))
-        })
+            GM_setClipboard(JSON.stringify(article))
+        }).then(() => alert('finish'))
     }, {
         once: true
     })
