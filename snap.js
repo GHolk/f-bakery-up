@@ -17,23 +17,23 @@ class Anchor {
         this.url = url
     }
     static fromNode(node) {
-        var text = $(node).text()
-        var url = $(node).attr('href')
+        var text = node.textContent
+        var url = node.href
         return new this(text, url)
     }
 }
 
 function abbrToDate(abbr) {
-    var timeText = $(abbr).attr('title')
+    var timeText = abbr.title
     var wellTimeText = timeText.replace(/[^0-9:]/g, ' ')
     return new Date(wellTimeText)
 }
 
 function extractPost(parent) {
-    var authorNode = $(parent).find('h5 a')
+    var authorNode = parent.querySelector('h5 a')
     var author = Anchor.fromNode(authorNode)
 
-    var dateNode = $(parent).find('abbr:has(.timestampContent)')
+    var dateNode = parent.querySelector('.timestampContent').parentNode
     var date = abbrToDate(dateNode)
 
     var content = findPostContent(parent)
@@ -41,9 +41,90 @@ function extractPost(parent) {
     return new Article(author, date, content)
 }
 
-var article = extractPost($('div'))
+// var article = extractPost($('div'))
 
 function findPostContent(parent) {
-    var contentNode = $(parent).find('.userContent div > span:first-child')
-    return contentNode.text()
+    var contentNode =
+        parent.querySelector('.userContent div > span:first-child')
+    return contentNode.textContent
+}
+
+function reduceNode(node) {
+    function allChildren(node) {
+        return Array.from(node.childNodes)
+    }
+    function isTextNode(node) {
+        return node.nodeType == 3 && node.nodeValue
+    }
+    function clone(node) {
+        let deep
+        return node.cloneNode(deep = false)
+    }
+    function isEmptyTextNode(node) {
+        return isTextNode(node) && !node.nodeValue.trim()
+    }
+    function recur(node) {
+        if (isTextNode(node)) return clone(node)
+        else {
+            let children = allChildren(node)
+            children = children.filter((node) => !isEmptyTextNode(node))
+            
+            if (children.length == 0) return clone(node)
+            if (children.length == 1) return recur(children[0])
+            else {
+                let newNode = clone(node)
+                children.reduce((parent, child) => {
+                    parent.appendChild(recur(child))
+                    return parent
+                }, newNode)
+                return newNode
+            }
+        }
+    }
+    function trimNormalize(node) {
+        let deep
+        let newNode = node.cloneNode(deep = true)
+        newNode.normalize()
+        return newNode
+    }
+    return recur(trimNormalize(node))
+}
+
+function sleep(minisecond) {
+    return new Promise((wake) => setTimeout(wake, minisecond))
+}
+
+function expandComment(node) {
+    return new Promise(function tryExpand(finishExpand) {
+        let expandNode = Array.from(
+            node.querySelectorAll('a.UFIPagerLink, a.UFICommentLink')
+        )
+
+        if (expandNode.length == 0) finishExpand(node)
+        else {
+            expandNode.forEach((anchor) => anchor.click())
+            sleep(1000).then(() => tryExpand(finishExpand))
+        }
+    })
+}
+
+function seeMore(node) {
+    return new Promise(function tryExpand(finishExpand) {
+        let expandNode = node.querySelector('a.see_more_link')
+        if (!expandNode) finishExpand(node)
+        else {
+            expandNode.click()
+            sleep(1000).then(() => tryExpand(finishExpand))
+        }
+    })
+}
+
+
+function backupPost(node) {
+    return Promise.all([
+        seeMore(node),
+        expandComment(node)
+    ]).then(() => {
+        window.post = extractPost(node)
+    })
 }
