@@ -32,6 +32,13 @@ class Anchor {
     }
 }
 
+class Reaction {
+    constructor(name, count) {
+        this.name = name
+        this.count = count
+    }
+}
+
 function abbrToDate(abbr) {
     var timeText = abbr.title
     var wellTimeText = timeText.replace(/[^0-9:]/g, ' ')
@@ -127,27 +134,54 @@ function seeMore(node) {
     })
 }
 
-function extractCommentReaction(parent) {
-    let reaction
+function extractComment(parent) {
+    function parseComment(comment) {
+        let authorNode = comment.querySelector('a.UFICommentActorName')
+        let author = new Anchor.fromNode(authorNode)
+
+        let commentNode = comment.querySelector('.UFICommentBody')
+        let comment = commentNode.textContent
+
+        let reactionNode = comment.querySelector('.UFICommentActions')
+        let reaction = [] // todo
+
+        let dateNode = comment.querySelector('.livetimestamp')
+        let date = abbrToDate(dateNode)
+
+        return new Article(author, date, comment, reaction)
+    }
+    let comment = Array.from(parent.querySelectorAll('.UFIComment'))
+    return comment.map(parseComment)
 }
 
 function extractPostReaction(parent) {
     let reactionNode = parent.querySelectorAll('.UFILikeSentence a')
     return Array.from(reactionNode)
-        .map((a) => a.querySelector('span:last-child'))
-        .map((span) => span.textContent)
-        .map(Number)
+        .map((a) => {
+            let count = Number(a.querySelector('span:last-child').textContent)
+            let name = a.getAttribute('aria-label').slice(-1)
+            return new Reaction(name, count)
+        })
 }
 
 function backupPost(node) {
     return Promise.all([
         seeMore(node),
         expandComment(node)
-    ]).then(() => extractPost(node))
+    ]).then(() => {
+        let post = extractPost(node)
+        let comment = extractComment(node)
+        comment.forEach((comment) => post.addReply(comment))
+
+        return post
+    })
 }
 
 GM_registerMenuCommand('backup post', getPostByClick, 'b')
 function getPostByClick() {
+    function sentToClipboard(text) {
+        GM_setClipboard(text)
+    }
     function findPost(node) {
         if (node.classList.contains('fbUserStory')) return node
         else {
@@ -161,7 +195,7 @@ function getPostByClick() {
         let postNode = findPost(clickEvent.target)
         backupPost(postNode).then((article) => {
             window.article = article
-            GM_setClipboard(JSON.stringify(article))
+            sentToClipboard(JSON.stringify(article))
         }).then(() => alert('finish'))
     }, {
         once: true
