@@ -7,6 +7,21 @@
 // @grant       GM_registerMenuCommand
 // ==/UserScript==
 
+let config = {
+    icon: 'https://raw.githubusercontent.com/GHolk/f-bakery-up/master/icon.png'
+}
+
+let iconCursor = {
+    origin: null,
+    set: function () {
+        this.origin = document.body.style.cursor
+        document.body.style.cursor = `url(${config.icon}), pointer`
+    },
+    clear: function () {
+        document.body.style.cursor = this.origin
+    }
+}
+
 class Article {
     constructor(author, date, content, reaction) {
         this.author = author
@@ -205,8 +220,10 @@ function getPostByClick() {
         backupPost(postNode).then((article) => {
             window.article = article
             sentToClipboard(JSON.stringify(article))
-        }).then(() => alert('finish'))
+            iconCursor.clear()
+        })
     }, {
         once: true
     })
+    iconCursor.set()
 }
