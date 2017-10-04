@@ -125,12 +125,11 @@ function expandComment(node) {
 
 function seeMore(node) {
     return new Promise(function tryExpand(finishExpand) {
-        let expandNode = node.querySelector('a.see_more_link')
-        if (!expandNode) finishExpand(node)
-        else {
-            expandNode.click()
-            sleep(1000).then(() => tryExpand(finishExpand))
-        }
+        let expandNode = node.querySelectorAll('a.see_more_link')
+        Array.from(expandNode).forEach((a) => a.click())
+
+        // do not know when will finish expand
+        return sleep(1000).then(() => finishExpand(node))
     })
 }
 
@@ -165,16 +164,15 @@ function extractPostReaction(parent) {
 }
 
 function backupPost(node) {
-    return Promise.all([
-        seeMore(node),
-        expandComment(node)
-    ]).then(() => {
-        let post = extractPost(node)
-        let comment = extractComment(node)
-        comment.forEach((comment) => post.addReply(comment))
+    return expandComment(node)
+        .then((node) => seeMore(node))
+        .then((node) => {
+            let post = extractPost(node)
+            let comment = extractComment(node)
+            comment.forEach((comment) => post.addReply(comment))
 
-        return post
-    })
+            return post
+        })
 }
 
 try {
