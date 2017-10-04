@@ -137,10 +137,10 @@ function seeMore(node) {
 function extractComment(parent) {
     function parseComment(comment) {
         let authorNode = comment.querySelector('a.UFICommentActorName')
-        let author = new Anchor.fromNode(authorNode)
+        let author = Anchor.fromNode(authorNode)
 
-        let commentNode = comment.querySelector('.UFICommentBody')
-        let comment = commentNode.textContent
+        let contentNode = comment.querySelector('.UFICommentBody')
+        let content = contentNode.textContent
 
         let reactionNode = comment.querySelector('.UFICommentActions')
         let reaction = [] // todo
@@ -148,7 +148,7 @@ function extractComment(parent) {
         let dateNode = comment.querySelector('.livetimestamp')
         let date = abbrToDate(dateNode)
 
-        return new Article(author, date, comment, reaction)
+        return new Article(author, date, content, reaction)
     }
     let comment = Array.from(parent.querySelectorAll('.UFIComment'))
     return comment.map(parseComment)
@@ -159,7 +159,7 @@ function extractPostReaction(parent) {
     return Array.from(reactionNode)
         .map((a) => {
             let count = Number(a.querySelector('span:last-child').textContent)
-            let name = a.getAttribute('aria-label').slice(-1)
+            let name = String(a.getAttribute('aria-label')).slice(-1)
             return new Reaction(name, count)
         })
 }
@@ -177,10 +177,21 @@ function backupPost(node) {
     })
 }
 
-GM_registerMenuCommand('backup post', getPostByClick, 'b')
+try {
+    GM_registerMenuCommand('backup post', getPostByClick, 'b')
+}
+catch (registCommandError) {
+    console.error('cannot regist greasy monkey command')
+}
+
 function getPostByClick() {
     function sentToClipboard(text) {
-        GM_setClipboard(text)
+        try {
+            GM_setClipboard(text)
+        }
+        catch (copyError) {
+            console.error('connot copy to clipboard')
+        }
     }
     function findPost(node) {
         if (node.classList.contains('fbUserStory')) return node
