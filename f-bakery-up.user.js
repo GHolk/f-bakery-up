@@ -8,16 +8,24 @@
 // ==/UserScript==
 
 let config = {
-    icon: 'https://raw.githubusercontent.com/GHolk/f-bakery-up/master/icon.png'
+    icon: {
+        url: 'https://raw.githubusercontent.com/GHolk/f-bakery-up/master/icon.png',
+        size: 10
+    }
 }
 
 let iconCursor = {
     origin: null,
-    set: function () {
+    select: function () {
         this.origin = document.body.style.cursor
-        document.body.style.cursor = `url(${config.icon}), pointer`
+        let icon = config.icon
+        let offset = `${icon.size/2} ${icon.size/2}`
+        document.body.style.cursor = `url(${icon.url}) ${offset}, pointer`
     },
-    clear: function () {
+    wait: function () {
+        document.body.style.cursor = 'wait'
+    },
+    finish: function () {
         document.body.style.cursor = this.origin
     }
 }
@@ -216,14 +224,15 @@ function getPostByClick() {
     }
     document.addEventListener('click', function (clickEvent) {
         clickEvent.preventDefault()
+        iconCursor.wait()
         let postNode = findPost(clickEvent.target)
         backupPost(postNode).then((article) => {
             window.article = article
             sentToClipboard(JSON.stringify(article))
-            iconCursor.clear()
+            iconCursor.finish()
         })
     }, {
         once: true
     })
-    iconCursor.set()
+    iconCursor.select()
 }
